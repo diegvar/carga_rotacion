@@ -1,6 +1,6 @@
 import pandas as pd
 from google.cloud import bigquery, storage
-import functions_framework
+from flask import Flask, request, jsonify
 import io
 import os
 
@@ -9,24 +9,28 @@ PROJECT_ID = "pruebas-463316"
 DATASET_ID = "ww_data_upload_asistencia"
 TABLE_ID = "testdata"
 
-@functions_framework.cloud_event
-def process_rotacion_file(cloud_event):
+app = Flask(__name__)
+
+@app.route('/', methods=['POST'])
+def process_rotacion_file():
     """
-    Cloud Function que se ejecuta cuando se sube un archivo a Storage
+    Cloud Run service que procesa archivos de rotación desde Storage
     """
-    # Obtener información del archivo subido
-    data = cloud_event.data
-    bucket_name = data["bucket"]
-    file_name = data["name"]
-    
-    print(f"Procesando archivo: {file_name} del bucket: {bucket_name}")
-    
-    # Verificar que sea un archivo Excel
-    if not file_name.lower().endswith(('.xlsx', '.xls')):
-        print(f"El archivo {file_name} no es un archivo Excel. Saltando procesamiento.")
-        return
-    
     try:
+        # Obtener información del archivo desde el request
+        request_data = request.get_json()
+        bucket_name = request_data.get("bucket")
+        file_name = request_data.get("name")
+        
+        if not bucket_name or not file_name:
+            return jsonify({"error": "Se requieren 'bucket' y 'name' en el request"}), 400
+    
+        print(f"Procesando archivo: {file_name} del bucket: {bucket_name}")
+        
+        # Verificar que sea un archivo Excel
+        if not file_name.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({"error": f"El archivo {file_name} no es un archivo Excel"}), 400
+    
         # Leer archivo desde Storage
         storage_client = storage.Client()
         bucket = storage_client.bucket(bucket_name)
@@ -90,6 +94,22 @@ def process_rotacion_file(cloud_event):
         
         print(f"Archivo {file_name} procesado exitosamente. {len(data)} registros cargados a BigQuery.")
         
+        return jsonify({
+            "success": True,
+            "message": f"Archivo {file_name} procesado exitosamente",
+            "records_processed": len(data)
+        })
+        
     except Exception as e:
         print(f"Error procesando archivo {file_name}: {str(e)}")
-        raise e
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy"})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
