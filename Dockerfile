@@ -1,28 +1,23 @@
-# Usar la imagen oficial de Python
+# Use the official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Establecer el directorio de trabajo
+# Set the working directory in the container
 WORKDIR /app
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copiar requirements.txt e instalar dependencias de Python
+# Copy the requirements file
 COPY requirements.txt .
+
+# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la aplicación
-COPY main.py .
+# Copy the current directory contents into the container at /app
+COPY . .
 
-# Exponer el puerto 8080 (puerto estándar para Cloud Functions)
+# Make port 8080 available to the world outside this container
 EXPOSE 8080
 
-# Variables de entorno por defecto (se pueden sobrescribir)
+# Define environment variable
 ENV PORT=8080
-ENV PYTHONUNBUFFERED=1
 
-# Comando para ejecutar la función
-CMD exec functions-framework --target=rotacion_sync --port=$PORT --host=0.0.0.0
+# Run the application
+CMD ["python", "main.py"]

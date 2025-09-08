@@ -1,4 +1,3 @@
-import functions_framework
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import requests
@@ -197,7 +196,7 @@ def sync_to_bigquery():
     df_norm = normalize_and_filter(data, exclude_codes=[9999], exclude_texts=["Inactivar sin Movimiento"])
     df_norm = df_norm.loc[(df_norm.tipo_empleado!='PART TIME BOLETA')]
     df_bridge = build_employee_month_bridge(df_norm)
-    df_bridge = df_bridge[['period','rut', 'cliente', 'instalacion', 'cecos', 'cargo', 'nombre_completo', 'cargo','tipo_empleado'
+    df_bridge = df_bridge[['period','rut', 'cliente', 'instalacion', 'cecos', 'cargo', 'nombre_completo', 'tipo_empleado',
            'estado', '_f_ingreso', '_f_finiquito', 'month_start', 'month_end', 
            'days_in_month', 'active_days', 'active_ratio', 'active_on_month_start',
            'active_on_month_end', 'hire_in_month', 'term_in_month', 'term_causal_text']]
@@ -221,33 +220,30 @@ def sync_to_bigquery():
         "records_processed": len(df_bridge)
     }
 
-@functions_framework.http
-def rotacion_sync(request):
-    """
-    Cloud Function HTTP endpoint para sincronizar datos de rotación
-    """
-    # Configurar CORS
-    if request.method == 'OPTIONS':
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '3600'
-        }
-        return ('', 204, headers)
+# Crear la aplicación FastAPI
+app = FastAPI()
 
-    # Configurar headers de respuesta
-    headers = {
-        'Access-Control-Allow-Origin': '*'
-    }
+@app.get("/")
+def root():
+    return {"message": "Servicio de sincronización de rotación activo"}
 
+@app.post("/rotacion_sync")
+def rotacion_sync():
+    """
+    Endpoint para sincronizar datos de rotación
+    """
     try:
         result = sync_to_bigquery()
-        return (JSONResponse(content=result).body.decode(), 200, headers)
+        return result
     except Exception as e:
         error_response = {
             "success": False,
             "error": str(e),
             "message": "Error al procesar la sincronización"
         }
-        return (JSONResponse(content=error_response).body.decode(), 500, headers)
+        raise HTTPException(status_code=500, detail=error_response)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+

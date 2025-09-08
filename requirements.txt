@@ -1,6 +1,7 @@
-functions-framework==3.*
 fastapi==0.104.*
+uvicorn==0.24.*
 requests==2.31.*
 google-cloud-bigquery==3.*
 pandas==2.1.*
 numpy==1.24.*
+

@@ -1,17 +1,20 @@
-# Cloud Function - Sincronización de Rotación
+# Cloud Run - Sincronización de Rotación
 
-Esta Cloud Function sincroniza datos de rotación de empleados desde una API externa hacia BigQuery.
+Este servicio de Cloud Run sincroniza datos de rotación de empleados desde una API externa hacia BigQuery.
 
 ## Archivos incluidos
 
-- `main.py` - Función principal de la Cloud Function
+- `main.py` - Aplicación FastAPI principal
 - `requirements.txt` - Dependencias de Python
-- `.gcloudignore` - Archivos a ignorar en el despliegue
+- `Dockerfile` - Configuración de Docker para Cloud Run
+- `.dockerignore` - Archivos a ignorar en el build de Docker
+- `deploy.sh` - Script de despliegue automatizado
+- `config.example` - Ejemplo de configuración de variables de entorno
 - `README.md` - Este archivo
 
 ## Variables de entorno requeridas
 
-Configura las siguientes variables de entorno en tu Cloud Function:
+Configura las siguientes variables de entorno en tu servicio de Cloud Run:
 
 - `API_LOCAL_URL` - URL de la API de ControlRoll
 - `PROJECT_ID` - ID del proyecto de GCP
@@ -19,44 +22,47 @@ Configura las siguientes variables de entorno en tu Cloud Function:
 - `TABLE_ID` - ID de la tabla de BigQuery
 - `TOKEN_CR` - Token de autenticación para la API
 
-## Despliegue desde GitHub
+## Despliegue a Cloud Run
 
-### Opción 1: Usando Google Cloud Console
+### Opción 1: Usando el script automatizado
+
+1. Configura las variables de entorno en el archivo `config.example`
+2. Ejecuta el script de despliegue:
+```bash
+./deploy.sh
+```
+
+### Opción 2: Usando Google Cloud Console
 
 1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
-2. Navega a Cloud Functions
-3. Haz clic en "Crear función"
+2. Navega a Cloud Run
+3. Haz clic en "Crear servicio"
 4. Configura:
-   - **Nombre**: `rotacion-sync`
-   - **Región**: Selecciona tu región preferida
-   - **Tipo de activador**: HTTP
-   - **Autenticación**: Permitir tráfico no autenticado (si es necesario)
+   - **Nombre**: `carga-rotacion`
+   - **Región**: `us-east1`
+   - **Autenticación**: Permitir tráfico no autenticado
 5. En "Código fuente":
    - Selecciona "Repositorio de código fuente"
    - Conecta tu repositorio de GitHub
    - Selecciona la rama y directorio
-6. En "Runtime":
-   - **Runtime**: Python 3.11
-   - **Punto de entrada**: `rotacion_sync`
-7. En "Variables de entorno":
+6. En "Variables de entorno":
    - Agrega todas las variables requeridas
-8. Haz clic en "Desplegar"
+7. Haz clic en "Crear"
 
-### Opción 2: Usando gcloud CLI
+### Opción 3: Usando gcloud CLI
 
 ```bash
-# Clona el repositorio
-git clone <tu-repositorio-github>
-cd <directorio-del-proyecto>
-
-# Despliega la función
-gcloud functions deploy rotacion-sync \
-  --runtime python311 \
-  --trigger-http \
+# Construir y desplegar
+gcloud builds submit --tag gcr.io/pruebas-463316/carga-rotacion
+gcloud run deploy carga-rotacion \
+  --image gcr.io/pruebas-463316/carga-rotacion \
+  --platform managed \
+  --region us-east1 \
   --allow-unauthenticated \
-  --source . \
-  --entry-point rotacion_sync \
-  --set-env-vars API_LOCAL_URL="tu-api-url",PROJECT_ID="tu-project-id",DATASET_ID="tu-dataset",TABLE_ID="tu-tabla",TOKEN_CR="tu-token"
+  --memory 2Gi \
+  --cpu 2 \
+  --timeout 3600 \
+  --set-env-vars API_LOCAL_URL="tu-api-url",PROJECT_ID="pruebas-463316",DATASET_ID="tu-dataset",TABLE_ID="tu-tabla",TOKEN_CR="tu-token"
 ```
 
 ## Uso
