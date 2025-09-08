@@ -195,9 +195,9 @@ def sync_to_bigquery():
     
     # Procesar datos de rotación
     df_norm = normalize_and_filter(data, exclude_codes=[9999], exclude_texts=["Inactivar sin Movimiento"])
-    df_norm = df_norm.loc[~((df_norm.fecha_finiquito=='') & (df_norm.estado=="Finiquitado"))]
+    df_norm = df_norm.loc[(df_norm.tipo_empleado!='PART TIME BOLETA')]
     df_bridge = build_employee_month_bridge(df_norm)
-    df_bridge = df_bridge[['period','rut', 'cliente', 'instalacion', 'cecos', 'cargo', 'nombre_completo', 'cargo',
+    df_bridge = df_bridge[['period','rut', 'cliente', 'instalacion', 'cecos', 'cargo', 'nombre_completo', 'cargo','tipo_empleado'
            'estado', '_f_ingreso', '_f_finiquito', 'month_start', 'month_end', 
            'days_in_month', 'active_days', 'active_ratio', 'active_on_month_start',
            'active_on_month_end', 'hire_in_month', 'term_in_month', 'term_causal_text']]
